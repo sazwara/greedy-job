@@ -585,226 +585,109 @@ gen byte _is_female = (`sex' == 2) if inlist(`sex', 1, 2)
 
 label var _is_female "1 if female"
 
-***A12. harmonized nine-sector KBLI
-gen _kbli_default = `industry'
-replace _kbli_default = . if _employed == 0
-gen byte _kbli_harmonized = .
+***A12. Main-job industry: common 17-category KBLI grouping
 
-	* 2000-2006: detailed KLUI codes
-	if inrange(`y', 2000, 2006) {
-		replace _kbli_harmonized = 1 if inrange(_kbli_default,   1,  50)
-		replace _kbli_harmonized = 2 if inrange(_kbli_default, 101, 142)
-		replace _kbli_harmonized = 3 if inrange(_kbli_default, 150, 372)
-		replace _kbli_harmonized = 4 if inrange(_kbli_default, 400, 410)
-		replace _kbli_harmonized = 5 if inrange(_kbli_default, 450, 499)
-		replace _kbli_harmonized = 6 if inrange(_kbli_default, 501, 599)
-		replace _kbli_harmonized = 7 if inrange(_kbli_default, 601, 650)
-		replace _kbli_harmonized = 8 if inrange(_kbli_default, 651, 749)
-		replace _kbli_harmonized = 9 if inrange(_kbli_default, 750, 999)
-	}
+gen _kbli17 = `industry' ///
+    if inrange(`industry', 1, 17) ///
+    & `industry' == floor(`industry')
 
-	* 2007-2017: already nine-sector categories
-	if inrange(`y', 2007, 2017) {
-		replace _kbli_harmonized = _kbli_default ///
-			if inrange(_kbli_default, 1, 9)
-	}
+label define kbli17lbl ///
+     1 "A Agriculture, forestry and fishing" ///
+     2 "B Mining and quarrying" ///
+     3 "C Manufacturing" ///
+     4 "D Electricity, gas, steam and air conditioning supply" ///
+     5 "E Water, sewerage, waste management and remediation" ///
+     6 "F Construction" ///
+     7 "G Wholesale/retail trade; repair of motor vehicles" ///
+     8 "H Transportation and storage" ///
+     9 "I Accommodation and food services" ///
+    10 "J Information and communication" ///
+    11 "K Financial and insurance activities" ///
+    12 "L Real estate activities" ///
+    13 "M,N Professional and business services" ///
+    14 "O Public administration, defence and compulsory social security" ///
+    15 "P Education" ///
+    16 "Q Human health and social work" ///
+    17 "R,S,T,U Other services", replace
 
-	* 2018-2024: seventeen sectors converted to nine sectors
-	if inrange(`y', 2018, 2024) {
-		replace _kbli_harmonized = 1 if _kbli_default == 1
-		replace _kbli_harmonized = 2 if _kbli_default == 2
-		replace _kbli_harmonized = 3 if _kbli_default == 3
-		replace _kbli_harmonized = 4 if inlist(_kbli_default, 4, 5)
-		replace _kbli_harmonized = 5 if _kbli_default == 6
-		replace _kbli_harmonized = 6 if inlist(_kbli_default, 7, 9)
-		replace _kbli_harmonized = 7 if inlist(_kbli_default, 8, 10)
-		replace _kbli_harmonized = 8 if inlist(_kbli_default, 11, 12, 13)
-		replace _kbli_harmonized = 9 if inlist(_kbli_default, 14, 15, 16, 17)
-	}
+label values _kbli17 kbli17lbl
+label variable _kbli17 "17-category KBLI "
 
-label define kblilevel ///
-	1 "Agriculture, forestry, hunting and fishing" ///
-	2 "Mining and quarrying" ///
-	3 "Manufacturing" ///
-	4 "Electricity, gas and water" ///
-	5 "Construction" ///
-	6 "Trade, restaurants and accommodation" ///
-	7 "Transport, storage and communication" ///
-	8 "Finance, real estate and business services" ///
-	9 "Community, social and personal services", replace
+***A13. Main-job occupation: ten KBJI 2014 major groups, coded 0-9
 
-label values _kbli_harmonized kblilevel
-label variable _kbli_default    "Industry classification as released"
-label variable _kbli_harmonized "Harmonized nine-sector industry"
+gen _kbji2014 = `occ' ///
+    if inrange(`occ', 0, 9) ///
+    & `occ' == floor(`occ')
 
-* Broad sector retained for aggregate sector graphs
-gen byte _kbli_broad = .
-replace _kbli_broad = 1 if inlist(_kbli_harmonized, 1, 2)
-replace _kbli_broad = 2 if inlist(_kbli_harmonized, 3, 4, 5)
-replace _kbli_broad = 3 if inrange(_kbli_harmonized, 6, 9)
+label define kbji2014lbl ///
+    0 "TNI and POLRI" ///
+    1 "Managers" ///
+    2 "Professionals" ///
+    3 "Technicians and associate professionals" ///
+    4 "Clerical support workers" ///
+    5 "Service and sales workers" ///
+    6 "Skilled agricultural, forestry and fishery workers" ///
+    7 "Craft and related trades workers" ///
+    8 "Plant/machine operators and assemblers" ///
+    9 "Elementary occupations", replace
 
-label define kblibroad ///
-	1 "Primary sector" ///
-	2 "Secondary sector" ///
-	3 "Tertiary/services sector", replace
-
-label values _kbli_broad kblibroad
-label variable _kbli_broad "Harmonized three-sector industry"
-
-
-***A13. harmonized occupation tier***
-
-gen _kbji_default = `occ'
-replace _kbji_default = . if _employed == 0
-
-gen _kbji_major_raw = .
-
-* KBJI 2000 / ASCO: detailed code
-if `y' == 2000 {
-	replace _kbji_major_raw = floor(_kbji_default/100) ///
-		if !missing(_kbji_default)
-}
-
-* Detailed three-digit KJI 1982
-else if inrange(`y', 2001, 2006) | inrange(`y', 2013, 2015) {
-	replace _kbji_major_raw = cond(_kbji_default < 100, 0, ///
-		floor(_kbji_default/100)) ///
-		if !missing(_kbji_default)
-}
-
-* All remaining variables are already grouped codes
-else {
-	replace _kbji_major_raw = _kbji_default ///
-		if !missing(_kbji_default)
-}
-
-* Common detailed occupation groups.
-* Six comparable groups retained across waves.
-gen int _kbji_group = .
-
-* KBJI 2000 / ASCO
-if `y' == 2000 {
-	replace _kbji_group =   1 if _kbji_major_raw == 1
-	replace _kbji_group =   2 if inlist(_kbji_major_raw, 2, 3)
-	replace _kbji_group =   3 if _kbji_major_raw == 4
-	replace _kbji_group =   4 if _kbji_major_raw == 5
-	replace _kbji_group =   5 if _kbji_major_raw == 6
-	replace _kbji_group =   6 if inrange(_kbji_major_raw, 7, 9)
-}
-
-* Detailed KJI 1982
-else if inrange(`y', 2001, 2006) | inrange(`y', 2013, 2015) {
-	replace _kbji_group =   1 if _kbji_major_raw == 2
-	replace _kbji_group =   2 if inlist(_kbji_major_raw, 0, 1) ///
-		& _kbji_default != 0 & !missing(_kbji_default)
-	replace _kbji_group =   3 if _kbji_major_raw == 3
-	replace _kbji_group =   4 if inlist(_kbji_major_raw, 4, 5)
-	replace _kbji_group =   5 if _kbji_major_raw == 6
-	replace _kbji_group =   6 if inrange(_kbji_major_raw, 7, 9)
-}
-
-* Special 2007 converted KJI format
-else if `y' == 2007 {
-	replace _kbji_group =   2 if _kbji_default == 1
-	replace _kbji_group =   1 if _kbji_default == 2
-	replace _kbji_group =   3 if _kbji_default == 3
-	replace _kbji_group =   4 if inlist(_kbji_default, 4, 5)
-	replace _kbji_group =   5 if _kbji_default == 6
-	replace _kbji_group =   6 if _kbji_default == 789
-	* Code 10 remains excluded
-}
-
-* One-digit KJI 1982
-else if inrange(`y', 2008, 2012) | inrange(`y', 2016, 2024) {
-	replace _kbji_group =   2 if _kbji_default == 1
-	replace _kbji_group =   1 if _kbji_default == 2
-	replace _kbji_group =   3 if _kbji_default == 3
-	replace _kbji_group =   4 if inlist(_kbji_default, 4, 5)
-	replace _kbji_group =   5 if _kbji_default == 6
-	replace _kbji_group =   6 if _kbji_default == 7
-	* Codes 0 and 8 remain excluded
-}
-
-label define kbjigroup ///
-	  1 "Managers" ///
-	  2 "Professionals and technicians" ///
-	  3 "Clerical and administrative" ///
-	  4 "Service and sales" ///
-	  5 "Skilled agricultural" ///
-	  6 "Production, operators and elementary", replace
-
-label values _kbji_group kbjigroup
-label variable _kbji_group "Harmonized comparable occupation group"
-
-* Retain the existing high/middle/low occupation tier
-gen byte _kbji_harmonized = .
-replace _kbji_harmonized = 1 if inlist(_kbji_group, 1, 2)
-replace _kbji_harmonized = 2 if inlist(_kbji_group, 3, 4, 5)
-replace _kbji_harmonized = 3 if _kbji_group == 6
-
-label define kbjilevel ///
-	1 "High occupation tier" ///
-	2 "Middle occupation tier" ///
-	3 "Low occupation tier", replace
-
-label values _kbji_harmonized kbjilevel
-label variable _kbji_default "Occupation classification as released"
-label variable _kbji_harmonized "Harmonized three-tier occupation group"
-
-gen byte _occ_high = ///
-    (_kbji_harmonized == 1) if _employed == 1
-
-gen byte _occ_middle = ///
-    (_kbji_harmonized == 2) if _employed == 1
-
-gen byte _occ_low = ///
-    (_kbji_harmonized == 3) if _employed == 1
-
-gen byte _occ_missing = ///
-    missing(_kbji_harmonized) if _employed == 1
+label values _kbji2014 kbji2014lbl
+label variable _kbji2014 "10-category KBJI"
 	
 ***A14. family member status (number of members, above five, below five)
 
 clonevar _fam_member = `member'
 clonevar _abovefive = `abovefive'
 
-gen _belowfive=.
-if _is_child==1 {
-	replace _belowfive = `member' - `abovefive'
-	}
-else {
-	replace _belowfive = .
-	}
+gen _belowfive = .
+replace _belowfive = _fam_member - _abovefive ///
+    if !missing(_fam_member, _abovefive) ///
+    & inrange(_abovefive, 0, _fam_member)
 
 label var _fam_member "number of family members"
 label var _abovefive "people above 5 years old"
 label var _belowfive "people below 5 years old"
 
 ***A15. Work benefits
-*
-* NOTES: current construction gives "insurance benefit" value if at least one 
-* of the insurance provided is satisfied. does this reflect reality?
-*
 
-gen _benefit_ins =1 if `ins_health' == 1 | `ins_kk' == 1 | `ins_jk' == 1 | `ins_jht' == 1 ///
-					`ins_jp' == 1 & _employed==1 
-replace _benefit_ins =. if _employed == 0 & _laborforce == 0
+gen _ins_health = if _employed == 1 & `ins_health' == 1 
+gen _ins_acc = if _employed == 1 & `ins_kk' == 1  
+gen _ins_death = if _employed == 1 & `ins_jk' == 1
+gen _ins_tua = if _employed == 1 & `ins_jht' == 1
+gen _ins_pens = if _employed == 1 & `ins_jp' == 1
+
+foreach v in `ins_health' `ins_kk' `ins_jk' `ins_jht' `ins_jp' {
+	replace _ins_*=. if inlist(`v', 3, 97)
+}
+	
+label var _ins_health "work provided health insurance"
+label var _ins_acc "work provided accident insurance"
+label var _ins_death "work provided death insurance"
+label var _ins_tua "work provided old age insurance"
+label var _ins_pens "work provided pension insurance"
 
 gen _benefit_leave = .
 
-if `y' = 2025 {
-		replace _benefit_leave==1 if `ins_ann'==1 | `ins_mat' == 1 | `ins_sick' == 1
+if `y' == 2025 {
+		replace _benefit_leave = 1 if (`ins_ann'==1 | `ins_mat' == 1 | `ins_sick' == 1)
 }
 
 else if inlist(`y', 2023, 2024) {
-		replace _benefit_leave ==1 if `ins_ann' == 1 | `ins_sick' == 1
+		replace _benefit_leave = 1 if (`ins_ann' == 1 | `ins_sick' == 1)
+}
+else if inrange(`y', 2016, 2019) | inlist(`y', 2021, 2022) {
+	replace _benefit_leave = 1 if `ins_ann' == 1
 }
 else {
-	replace _benefit_leave == 1 if `ins_ann' == 1
+	replace _benefit_leave = 0 if (`ins_ann' == 2 & `ins_mat' == 2 & `ins_sick' == 2)
 }
 
-
-
+***A16 Other women presence in households
+gen  _otherwomen = ///
+    (`statuskel' >= 3 & _is_female == 1 & _age >= 18) ///
+    if !missing(`statuskel', _is_female, _age)
+	
+label var _otherwomen "1 if non-spouse adult women"
 * ---------------------------------------------------------------------------
 * B. Variables construction: non-transformed variables
 * ---------------------------------------------------------------------------
